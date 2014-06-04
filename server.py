@@ -34,7 +34,7 @@ class Board:
         output = self.message
         if len(output) > 0:
             output += "\n"
-        end = "  {0}\n"
+        end = "    {0}\n"
         output += end.format(self.data[0])
         for x in range(1, self.side_size+1):
             output += self.row_as_string(x)
@@ -42,7 +42,7 @@ class Board:
         return output
 
     def row_as_string(self, row):
-        middle = "{0}{1} {2}{3}\n"
+        middle = "{0}{1}\t  {2}{3}\n"
         left_index = row
         left = self.data[left_index]
         left_letter = self.get_letter(left_index)
@@ -76,7 +76,6 @@ class Board:
 
     def computer_play(self):
         available_positions = [self.get_letter(x) for x in range(self.side_size+2, self.side_size*2+2)]
-        print available_positions
         moves = []
         while True:
             chosen_position = self.pick_good_position(available_positions)
@@ -87,10 +86,18 @@ class Board:
         self.message = "Computer played {0}".format("".join(moves))
 
     def pick_good_position(self, positions):
+        can = []
+        should = []
         for position in positions:
-            if self.data[self.get_position(position)] is not 0:
-                return position
-        return positions[0]
+            p = self.get_position(position)
+            num_marbles = self.data[p]
+            can_play = num_marbles is not 0
+            should_play = (p + num_marbles)%len(self.data) is 0
+            if can_play:
+                can.append(position)
+                if should_play:
+                    return position
+        return can.pop()
 
     def get_winner(self):
         user_marbles = [self.data[x] for x in range(1, self.side_size-1)]
@@ -108,7 +115,7 @@ class Board:
             self.message = "{0} wins! Game reset.".format(winner)
 
     def start(self):
-        self.message = "Let the games begin\nEnter a letter to play that slot (you're left, gonig anti-clockwise)"
+        self.message = "Enter a letter to play that slot (you're on the left, going anti-clockwise)"
 
     def reset(self):
         self.__init__()
@@ -130,6 +137,7 @@ class Board:
             self.data[x % len(self.data)] += 1
             position += 1
         position -= 1
+        position = position % len(self.data)
         landed_in_end = position is 0 or position is self.side_size+1
         return landed_in_end
 
