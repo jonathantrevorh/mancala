@@ -34,7 +34,7 @@ class Board:
         output = self.message
         if len(output) > 0:
             output += "\n"
-        end = "    {0}\n"
+        end = "     {0}\n"
         output += end.format(self.data[0])
         for x in range(1, self.side_size+1):
             output += self.row_as_string(x)
@@ -58,13 +58,17 @@ class Board:
         length = len(command)
         if length == 1:
             position = self.get_position(command)
-            if self.is_valid_position(position):
-                can_play_again = self.play_position(position)
-                if can_play_again:
-                    self.message = "Your go again"
-                else:
-                    self.computer_play()
-                    self.check_win()
+            if self.is_valid_position(position) and self.is_valid_user_position(position):
+                try:
+                    can_play_again = self.play_position(position)
+                    has_winner = self.check_win()
+                    if not has_winner:
+                        if can_play_again:
+                            self.message = "Your go again"
+                        else:
+                            self.computer_play()
+                except IndexError:
+                    self.message = "Bad position"
             else:
                 self.message = "Out of bounds"
         else:
@@ -75,15 +79,18 @@ class Board:
             self.check_win()
 
     def computer_play(self):
-        available_positions = [self.get_letter(x) for x in range(self.side_size+2, self.side_size*2+2)]
+        available_positions = [self.get_letter(x) for x in self.get_computer_range()]
         moves = []
+        has_win = False
         while True:
             chosen_position = self.pick_good_position(available_positions)
             moves.append(chosen_position)
             can_play_again = self.play_position(self.get_position(chosen_position))
-            if not can_play_again:
+            has_win = self.check_win()
+            if not can_play_again or has_win:
                 break
-        self.message = "Computer played {0}".format("".join(moves))
+        if not has_win:
+            self.message = "Computer played {0}".format("".join(moves))
 
     def pick_good_position(self, positions):
         can = []
@@ -100,37 +107,65 @@ class Board:
         return can.pop()
 
     def get_winner(self):
-        user_marbles = [self.data[x] for x in range(1, self.side_size-1)]
-        if sum(user_marbles) is 0:
-            return "You"
-        computer_marbles = [self.data[x] for x in range(1, self.side_size-1)]
-        if sum(computer_marbles) is 0:
-            return "Computer"
+        user_marbles = sum([self.data[x] for x in self.get_user_range()])
+        computer_marbles = sum([self.data[x] for x in self.get_computer_range()])
+        user_well_marbles = self.data[self.get_user_well()]
+        computer_well_marbles = self.data[self.get_computer_well()]
+        if user_marbles is 0 or computer_marbles is 0:
+            if user_well_marbles > computer_well_marbles:
+                return "User"
+            elif user_well_marbles < computer_well_marbles:
+                return "Computer"
+            else:
+                return "Both"
         return False
+
+    def get_user_range(self):
+        start = 1
+        end = start + self.side_size
+        return range(start, end)
+
+    def get_user_well(self):
+        return self.side_size + 1
+
+    def get_computer_range(self):
+        start = self.side_size+2
+        end = start + self.side_size
+        return range(start, end)
+
+    def get_computer_well(self):
+        return 0
 
     def check_win(self):
         winner = self.get_winner()
         if winner is not False:
             self.reset()
             self.message = "{0} wins! Game reset.".format(winner)
+            return True
 
     def start(self):
         self.message = "Enter a letter to play that slot (you're on the left, going anti-clockwise)"
+
+    def help(self):
+        self.start()
 
     def reset(self):
         self.__init__()
         self.message = "Game reset"
 
     def win(self):
-        user_positions = [x for x in range(1, self.side_size-1)]
+        user_positions = [x for x in self.get_user_range()]
         for position in user_positions:
             self.data[position] = 0
+        self.data[self.get_user_well()] = 100
 
     def quit(self):
-        reset()
+        self.reset()
 
     def play_position(self, position):
         marbles = self.data[position]
+        if marbles is 0:
+            raise IndexError()
         self.data[position] = 0
         position += 1
         for x in range(position, position + marbles):
@@ -151,7 +186,10 @@ class Board:
         return chr(index+97).upper()
 
     def is_valid_position(self, position):
-        return position >= 1 and len(self.data)/2-1
+        return position >= 1 and position < len(self.data)
+
+    def is_valid_user_position(self, position):
+        return position in self.get_user_range()
 
 if __name__ == "__main__":
     app.debug = True
