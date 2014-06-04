@@ -3,6 +3,7 @@ import urllib2
 import re
 from flask import Flask
 from flask import request
+from flask import Response
 from pprint import pprint
 app = Flask(__name__)
 
@@ -15,7 +16,7 @@ def sms():
     board = get_board(sender)
     board.play(command)
     response = str(board)
-    return response
+    return Response(response, mimetype='text/plain')
 
 def get_board(phone):
     if phone not in users:
@@ -63,8 +64,7 @@ class Board:
                     self.message = "Your go again"
                 else:
                     self.computer_play()
-                if self.game_is_over():
-                    self.reset()
+                    self.check_win()
             else:
                 self.message = "Out of bounds"
         else:
@@ -72,6 +72,7 @@ class Board:
                 getattr(self, command)()
             except AttributeError:
                 self.message = "Invalid move"
+            self.check_win()
 
     def computer_play(self):
         available_positions = [self.get_letter(x) for x in range(self.side_size+2, self.side_size*2+2)]
@@ -91,11 +92,32 @@ class Board:
                 return position
         return positions[0]
 
+    def get_winner(self):
+        user_marbles = [self.data[x] for x in range(1, self.side_size-1)]
+        if sum(user_marbles) is 0:
+            return "You"
+        computer_marbles = [self.data[x] for x in range(1, self.side_size-1)]
+        if sum(computer_marbles) is 0:
+            return "Computer"
+        return False
+
+    def check_win(self):
+        winner = self.get_winner()
+        if winner is not False:
+            self.reset()
+            self.message = "{0} wins! Game reset.".format(winner)
+
     def start(self):
         self.message = "Let the games begin\nEnter a letter to play that slot (you're left, gonig anti-clockwise)"
 
     def reset(self):
+        self.__init__()
         self.message = "Game reset"
+
+    def win(self):
+        user_positions = [x for x in range(1, self.side_size-1)]
+        for position in user_positions:
+            self.data[position] = 0
 
     def quit(self):
         reset()
