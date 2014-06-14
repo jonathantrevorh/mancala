@@ -1,0 +1,10 @@
+<VirtualHost *:80>
+        ServerName mancala-endpoint.your-domain.example.com
+
+        <Proxy localhost:5000>
+                Allow from all
+        </Proxy>
+        ProxyPreserveHost on
+        ProxyPass / http://localhost:5000/ retry=0 timeout=5
+        ProxyPassReverse / http://localhost:5000/
+</VirtualHost>
